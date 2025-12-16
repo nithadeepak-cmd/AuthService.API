@@ -6,51 +6,60 @@ using AuthService.API.DTOs;
 using AuthService.API.Interfaces;
 using AuthService.API.Models;
 using Microsoft.IdentityModel.Tokens;
+using AuthService.API.Data;
+using Microsoft.EntityFrameworkCore;
+using BCrypt.Net;
 
 namespace AuthService.API.Services
 {
-    public class AuthenticationService:IAuthService
+    public class AuthenticationService : IAuthService
     {
-        private readonly List<User> _users = new();
+        // private readonly List<User> _users = new(); // In-memory user store
         private readonly IConfiguration _config;
-        public AuthenticationService(IConfiguration config)
+        private readonly AuthDbContext _context;
+
+        public AuthenticationService(AuthDbContext context, IConfiguration config)
         {
+            _context = context;
             _config = config;
         }
         public async Task<AuthResponseDTO> RegisterAsync(RegisterRequestDTO request)
         {
             //Write full register logic here
 
+
             // 1. Check if user already exists
-            if (_users.Any(u => u.Email.ToLower() == request.Email.ToLower()))
+            var existingUser = await _context.Users.FirstOrDefaultAsync(u => u.Email.ToLower()
+            == request.Email.ToLower());
+            if (existingUser != null)
                 throw new Exception("User already exists");
 
-            // 2. Hash the password
-            string passwordHash =Convert.ToBase64String(Encoding.UTF8.GetBytes(request.Password));
+            // 2. Hash the password - BCrypt
+            string passwordHash =BCrypt.Net.BCrypt.HashPassword(request.Password);
 
             //3. create user object
             var user = new User
             {
-                Id = _users.Count + 1,
+
                 Username = request.Username,
                 Email = request.Email,
                 PasswordHash = passwordHash,
-                Role = request.Role
+                Role = "User",
+                CreatedAt = DateTime.UtcNow,
+                IsActive = true
             };
 
-            //4.save user into the memory list
-            _users.Add(user);
+            //4. save user into database
+            _context.Users.Add(user);
+            await _context.SaveChangesAsync();
 
-            // 5.Generate JWTToken for this user
-            string token = GenerateJwtToken(user.Username, user.Role);
-
-            // 6. return response DTO
+            // 5. return response DTO
             return new AuthResponseDTO()
             {
-                Token = token,
-                RefreshToken = "",
-                Username=user.Username,
-                Role=user.Role
+                Token = string.Empty,
+                RefreshToken = string.Empty,
+                Username = user.Username,
+                Role = user.Role
             };
 
 
@@ -59,16 +68,17 @@ namespace AuthService.API.Services
         {
             //write full login logic here
 
-            //1. check if user exists
-            var user=_users.FirstOrDefault(u=>u.Email.ToLower() == request.Email.ToLower());
+            //1. check if user exists and active
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == request.Email.ToLower());
             if (user == null)
-                throw new Exception("Invalid email or password");
+               throw new Exception("Invalid email or password");
+            if(!user.IsActive)
+                throw new Exception("User account is inactive");
 
-            //2. Hash incoming password - same method as Register
-            string incomingPasswordHash = Convert.ToBase64String(Encoding.UTF8.GetBytes(request.Password));
-
-            // 3. compare hash with stored hash
-            if(incomingPasswordHash != user.PasswordHash)
+            //2. Bcrypt password verification
+            bool ispasswordValid = BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash);
+            // 3. Validate password
+            if (!ispasswordValid)
                 throw new Exception("Invalid email or password");
 
             //4. Generate JWT token
@@ -78,9 +88,9 @@ namespace AuthService.API.Services
             return new AuthResponseDTO
             {
                 Token = token,
-                RefreshToken = "",
-                Username=user.Username,
-                Role=user.Role
+                RefreshToken = string.Empty,
+                Username = user.Username,
+                Role = user.Role
             };
         }
         public string GenerateJwtToken(string username, string role)
@@ -101,7 +111,7 @@ namespace AuthService.API.Services
                 audience: jwtSettings["Audience"],
                 claims: claims,
                 expires: DateTime.UtcNow.AddMinutes(double.Parse(jwtSettings["ExpiresInMinutes"])),
-                signingCredentials:credentials
+                signingCredentials: credentials
                 );
 
             return new JwtSecurityTokenHandler().WriteToken(token);

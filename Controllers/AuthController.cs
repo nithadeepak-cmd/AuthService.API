@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using AuthService.API.DTOs;
 using AuthService.API.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 
 namespace AuthService.API.Controllers
 {
@@ -44,6 +45,21 @@ namespace AuthService.API.Controllers
                 return BadRequest(new {message=ex.Message});
             }
 
+        }
+
+        [Authorize(Roles = "Admin")]  //only users with Admin role can access
+        [HttpGet("admin-only")]
+        public IActionResult AdminOnly()
+        {
+            {     return Ok(new { Message = "You are an Admin.Only Admins can access this endpoint" , user=User.Identity?.Name}); }
+        }
+
+        [Authorize]//protects this endpoint - only authenticated users can access - without a valid token will get 401 Unauthorized
+        [HttpGet("user-profile")]
+        public IActionResult UserProfile()
+        {
+            {     return Ok(new { Message = "This is a user profile endpoint. Any authenticated user can access this.", 
+                user=User.Identity?.Name,Role=User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value}); }
         }
 
 
