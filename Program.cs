@@ -44,6 +44,7 @@ builder.Services.AddSwaggerGen();
 //Register AuthService for dependency injection
 //builder.Services.AddSingleton <IAuthService,AuthenticationService>(); (while using in memory list)
 builder.Services.AddScoped<IAuthService, AuthenticationService>(); //when using a real database, use scoped lifetime
+//register db context for dependency injection
 builder.Services.AddDbContext<AuthDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 var app = builder.Build();

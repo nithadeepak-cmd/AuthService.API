@@ -6,8 +6,8 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace AuthService.API.Controllers
 {
-    [Route("api/[controller]")]
-    [ApiController]
+    [Route("api/[controller]")] //Sets the base route for this controller to api/auth
+    [ApiController]  //Indicates that this class is an API controller - provides automatic model validation and other features
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
