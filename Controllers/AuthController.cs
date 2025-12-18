@@ -47,22 +47,33 @@ namespace AuthService.API.Controllers
 
         }
 
-        [Authorize(Roles = "Admin")]  //only users with Admin role can access
-        [HttpGet("admin-only")]
-        public IActionResult AdminOnly()
-        {
-            {     return Ok(new { Message = "You are an Admin.Only Admins can access this endpoint" , user=User.Identity?.Name}); }
+        [Authorize(Roles = "Admin")]
+        [HttpGet("users")]
+        public async Task<IActionResult> GetAllUsers()
+        { 
+            var users=await  _authService.GetAllUsersAsync();
+            return Ok(users);
         }
+        /*
+         * Commenting test end points used for jwt verification
+         * ------------------------------------------------------
+         * 
+                [Authorize(Roles = "Admin")]  //only users with Admin role can access
+                [HttpGet("admin-only")]
+                public IActionResult AdminOnly()
+                {
+                    {     return Ok(new { Message = "You are an Admin.Only Admins can access this endpoint" , user=User.Identity?.Name}); }
+                }
 
-        [Authorize]//protects this endpoint - only authenticated users can access - without a valid token will get 401 Unauthorized
-        [HttpGet("user-profile")]
-        public IActionResult UserProfile()
-        {
-            {     return Ok(new { Message = "This is a user profile endpoint. Any authenticated user can access this.", 
-                user=User.Identity?.Name,Role=User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value}); }
-        }
+                [Authorize]//protects this endpoint - only authenticated users can access - without a valid token will get 401 Unauthorized
+                [HttpGet("user-profile")]
+                public IActionResult UserProfile()
+                {
+                    {     return Ok(new { Message = "This is a user profile endpoint. Any authenticated user can access this.", 
+                        user=User.Identity?.Name,Role=User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value}); }
+                }
 
-
+        */
     }
 
 }

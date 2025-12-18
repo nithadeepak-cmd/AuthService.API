@@ -32,7 +32,18 @@ namespace AuthService.API.Services
             var existingUser = await _context.Users.FirstOrDefaultAsync(u => u.Email.ToLower()
             == request.Email.ToLower());
             if (existingUser != null)
-                throw new Exception("User already exists");
+            {
+                return new AuthResponseDTO()
+                {
+                    Token = string.Empty,
+                    RefreshToken = string.Empty,
+                    Username =string.Empty,
+                    Role = string.Empty,
+                    IsSuccess = false,
+                    Message = "User already exists"
+                };
+                //throw new Exception("User already exists");
+            }
 
             // 2. Hash the password - BCrypt
             string passwordHash =BCrypt.Net.BCrypt.HashPassword(request.Password);
@@ -59,7 +70,9 @@ namespace AuthService.API.Services
                 Token = string.Empty,
                 RefreshToken = string.Empty,
                 Username = user.Username,
-                Role = user.Role
+                Role = user.Role,
+                IsSuccess= true,
+                Message= "User registered successfully"
             };
 
 
@@ -71,15 +84,26 @@ namespace AuthService.API.Services
             //1. check if user exists and active
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == request.Email.ToLower());
             if (user == null)
-               throw new Exception("Invalid email or password");
-            if(!user.IsActive)
-                throw new Exception("User account is inactive");
+            {
+                //throw new Exception("Invalid email or password");
+                return new AuthResponseDTO { IsSuccess = false, Message = "Invalid email or password " };
+            }
+            if (!user.IsActive)
+            {
+                //throw new Exception("User account is inactive");
+                return new AuthResponseDTO { IsSuccess = false, Message = "User account is inactive " };
+            }
 
             //2. Bcrypt password verification
             bool ispasswordValid = BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash);
+
+
             // 3. Validate password
             if (!ispasswordValid)
-                throw new Exception("Invalid email or password");
+            {
+                //throw new Exception("Invalid email or password");
+                return new AuthResponseDTO { IsSuccess = false, Message = "Invalid email or password " };
+            }
 
             //4. Generate JWT token
             string token = GenerateJwtToken(user.Username, user.Role);
@@ -90,7 +114,9 @@ namespace AuthService.API.Services
                 Token = token,
                 RefreshToken = string.Empty,
                 Username = user.Username,
-                Role = user.Role
+                Role = user.Role,
+                IsSuccess= true,
+                Message= "Login successful"
             };
         }
         public string GenerateJwtToken(string username, string role)
@@ -115,6 +141,21 @@ namespace AuthService.API.Services
                 );
 
             return new JwtSecurityTokenHandler().WriteToken(token);
+        }
+
+        public async Task<List<UserListDTO>> GetAllUsersAsync()
+        {
+            var users = await _context.Users
+                .Select(u => new UserListDTO
+                {
+                    Id = u.Id,
+                    Username = u.Username,
+                    Email = u.Email,
+                    Role = u.Role,
+                    IsActive = u.IsActive
+                })
+                .ToListAsync();
+            return users;
         }
     }
 }

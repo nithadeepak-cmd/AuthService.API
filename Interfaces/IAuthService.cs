@@ -9,5 +9,6 @@ namespace AuthService.API.Interfaces
         Task<AuthResponseDTO> RegisterAsync(RegisterRequestDTO request);
         Task<AuthResponseDTO> LoginAsync(LoginRequestDTO request);
         string GenerateJwtToken(string username, string role);
+        Task<List<UserListDTO>> GetAllUsersAsync();
     }
 }

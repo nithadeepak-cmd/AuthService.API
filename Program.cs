@@ -6,6 +6,7 @@ using System.Text;
 //to register DB context if using a real database
 using Microsoft.EntityFrameworkCore;
 using AuthService.API.Data;   //the folder where dbcontext is in
+using AuthService.API.Models;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -48,6 +49,26 @@ builder.Services.AddScoped<IAuthService, AuthenticationService>(); //when using 
 builder.Services.AddDbContext<AuthDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 var app = builder.Build();
+
+//admin seeding logic
+using(var scope=app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
+    if(!context.Users.Any(u=>u.Role=="Admin"))
+    {
+        var admin = new User
+        {
+            Username = "admin",
+            Email = "admin@ecom.com",
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin@123"), //hash the password
+            Role = "Admin",
+            CreatedAt = DateTime.UtcNow,
+            IsActive = true
+        };
+        context.Users.Add(admin);
+        context.SaveChanges();
+    }
+}
 
 //enable authentication in pipeline - order matters: authentication first, then authorization
 app.UseAuthentication();
